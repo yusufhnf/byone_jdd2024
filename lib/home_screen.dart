@@ -1,27 +1,55 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:stacked/stacked.dart';
-import 'package:byone/ui/common/app_colors.dart';
-import 'package:byone/ui/common/ui_helpers.dart';
 
-import '../../../app/model/reminder_model.dart';
-import 'home_viewmodel.dart';
+import 'add_reminder_screen.dart';
+import 'model/reminder_model.dart';
 
-class HomeView extends StackedView<HomeViewModel> {
-  const HomeView({Key? key}) : super(key: key);
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
 
   @override
-  Widget builder(
-    BuildContext context,
-    HomeViewModel viewModel,
-    Widget? child,
-  ) {
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late List<ReminderModel> reminders;
+
+  @override
+  void initState() {
+    reminders = [
+      ReminderModel(
+        priority: TaskPriority.urgent,
+        status: TaskStatus.todo,
+        title: 'Buy Groceries',
+        description: 'Buy groceries for the week',
+        reminderId: 1,
+      ),
+      ReminderModel(
+        priority: TaskPriority.medium,
+        status: TaskStatus.inProgress,
+        title: 'Finish Assignment',
+        description: 'Finish the assignment due next week',
+        reminderId: 2,
+      ),
+      ReminderModel(
+        priority: TaskPriority.high,
+        status: TaskStatus.resolved,
+        title: 'Call Mom',
+        description: 'Call mom to check up on her',
+        reminderId: 3,
+      ),
+    ];
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return DefaultTabController(
       length: 3,
       child: Scaffold(
-        backgroundColor: kcWhiteColor,
+        backgroundColor: Colors.white,
         appBar: AppBar(
-          backgroundColor: kcPrimaryColor,
+          backgroundColor: Colors.green,
           title: const Text(
             'Be Productive, Yusuf',
             style: TextStyle(color: Colors.white),
@@ -31,7 +59,7 @@ class HomeView extends StackedView<HomeViewModel> {
           headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
             return <Widget>[
               SliverAppBar(
-                backgroundColor: kcPrimaryColor,
+                backgroundColor: Colors.green,
                 expandedHeight: 240.0,
                 floating: false,
                 pinned: true,
@@ -42,21 +70,21 @@ class HomeView extends StackedView<HomeViewModel> {
                       children: [
                         Expanded(
                             child: _buildStatusCard('To Do', TaskStatus.todo,
-                                count: viewModel.reminders
+                                count: reminders
                                     .where((element) =>
                                         element.status == TaskStatus.todo)
                                     .length)),
                         Expanded(
                             child: _buildStatusCard(
                                 'In Progress', TaskStatus.inProgress,
-                                count: viewModel.reminders
+                                count: reminders
                                     .where((element) =>
                                         element.status == TaskStatus.inProgress)
                                     .length)),
                         Expanded(
                             child: _buildStatusCard(
                                 'Resolved', TaskStatus.resolved,
-                                count: viewModel.reminders
+                                count: reminders
                                     .where((element) =>
                                         element.status == TaskStatus.resolved)
                                     .length)),
@@ -78,17 +106,26 @@ class HomeView extends StackedView<HomeViewModel> {
           },
           body: TabBarView(
             children: [
-              _buildReminderList(TaskStatus.todo, viewModel),
-              _buildReminderList(TaskStatus.inProgress, viewModel),
-              _buildReminderList(TaskStatus.resolved, viewModel),
+              _buildReminderList(TaskStatus.todo),
+              _buildReminderList(TaskStatus.inProgress),
+              _buildReminderList(TaskStatus.resolved),
             ],
           ),
         ),
         floatingActionButton: FloatingActionButton(
-          backgroundColor: kcPrimaryColor,
+          backgroundColor: Colors.green,
           foregroundColor: Colors.white,
-          onPressed: () {
-            viewModel.navigateToCreateReminder();
+          onPressed: () async {
+            final ReminderModel? data = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const AddReminderScreen()),
+            );
+            if (data != null) {
+              setState(() {
+                reminders.add(data);
+              });
+            }
           },
           child: const Icon(Icons.add),
         ),
@@ -96,29 +133,12 @@ class HomeView extends StackedView<HomeViewModel> {
     );
   }
 
-  Widget _buildReminderList(TaskStatus status, HomeViewModel viewModel) {
-    if (viewModel.reminders
-        .where((element) => element.status == status)
-        .isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.assignment, size: 100, color: Colors.grey),
-            verticalSpaceMedium,
-            Text(
-              'No reminders for this status',
-              style: TextStyle(color: Colors.black, fontSize: 16),
-            ),
-          ],
-        ),
-      );
-    }
+  Widget _buildReminderList(TaskStatus status) {
     return ListView.builder(
-      itemCount: viewModel.reminders.length,
+      itemCount: reminders.length,
       padding: const EdgeInsets.all(16),
       itemBuilder: (context, index) {
-        if (viewModel.reminders[index].status != status) {
+        if (reminders[index].status != status) {
           return const SizedBox.shrink();
         }
         return Slidable(
@@ -127,22 +147,20 @@ class HomeView extends StackedView<HomeViewModel> {
             motion: const ScrollMotion(),
             dismissible: DismissiblePane(onDismissed: () {}),
             children: [
-              if (viewModel.reminders[index].status != TaskStatus.resolved)
+              if (reminders[index].status != TaskStatus.resolved)
                 SlidableAction(
                   borderRadius: BorderRadius.circular(10.0),
                   onPressed: (context) {
-                    if (viewModel.reminders[index].status == TaskStatus.todo) {
-                      viewModel.onReminderStatusChanged(
-                          index, TaskStatus.inProgress);
+                    if (reminders[index].status == TaskStatus.todo) {
+                      _onReminderStatusChanged(index, TaskStatus.inProgress);
                     } else {
-                      viewModel.onReminderStatusChanged(
-                          index, TaskStatus.resolved);
+                      _onReminderStatusChanged(index, TaskStatus.resolved);
                     }
                   },
-                  backgroundColor: kcPrimaryColor,
+                  backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
                   icon: Icons.chevron_right,
-                  label: viewModel.reminders[index].status == TaskStatus.todo
+                  label: reminders[index].status == TaskStatus.todo
                       ? 'Start'
                       : 'Resolve',
                 ),
@@ -151,14 +169,26 @@ class HomeView extends StackedView<HomeViewModel> {
           child: Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: ListTile(
-                title: Text(viewModel.reminders[index].title),
-                subtitle: Text(viewModel.reminders[index].description),
-                trailing:
-                    trailingTextStyle(viewModel.reminders[index].priority)),
+                title: Text(reminders[index].title),
+                subtitle: Text(reminders[index].description),
+                trailing: trailingTextStyle(reminders[index].priority)),
           ),
         );
       },
     );
+  }
+
+  Widget trailingTextStyle(TaskPriority priorityType) {
+    switch (priorityType) {
+      case TaskPriority.urgent:
+        return const Text('Urgent', style: TextStyle(color: Colors.red));
+      case TaskPriority.medium:
+        return const Text('Medium', style: TextStyle(color: Colors.green));
+      case TaskPriority.high:
+        return const Text('High', style: TextStyle(color: Colors.amber));
+      default:
+        return const Text('Urgent', style: TextStyle(color: Colors.red));
+    }
   }
 
   Widget _buildStatusCard(String title, TaskStatus status, {int count = 0}) {
@@ -175,7 +205,7 @@ class HomeView extends StackedView<HomeViewModel> {
               Text(
                 title.toUpperCase(),
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: kcPrimaryColor, fontSize: 12),
+                style: const TextStyle(color: Colors.green, fontSize: 12),
               ),
               const SizedBox(height: 8),
               Text(
@@ -192,22 +222,9 @@ class HomeView extends StackedView<HomeViewModel> {
     );
   }
 
-  Widget trailingTextStyle(TaskPriority priorityType) {
-    switch (priorityType) {
-      case TaskPriority.urgent:
-        return const Text('Urgent', style: TextStyle(color: Colors.red));
-      case TaskPriority.medium:
-        return const Text('Medium', style: TextStyle(color: kcPrimaryColor));
-      case TaskPriority.high:
-        return const Text('High', style: TextStyle(color: Colors.amber));
-      default:
-        return const Text('Urgent', style: TextStyle(color: Colors.red));
-    }
+  void _onReminderStatusChanged(int index, TaskStatus status) {
+    setState(() {
+      reminders[index] = reminders[index].copyWith(status: status);
+    });
   }
-
-  @override
-  HomeViewModel viewModelBuilder(
-    BuildContext context,
-  ) =>
-      HomeViewModel();
 }
